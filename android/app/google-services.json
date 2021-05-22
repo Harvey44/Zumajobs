@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "760307845653",
+    "project_id": "zuma-jobs",
+    "storage_bucket": "zuma-jobs.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:760307845653:android:4c4a195ca5a61f42ff1c1c",
+        "android_client_info": {
+          "package_name": "com.mobile.zumajobs"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "760307845653-ldmp08bfp88388dnq623l9vha9696sj8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mobile.zumajobs",
+            "certificate_hash": "f0c916d170f417daf042a6ed2c443b1ea460710e"
+          }
+        },
+        {
+          "client_id": "760307845653-941iud38ga1eregj9cjgdo6hvu2mahe6.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAg1-C0EaRwacoiuWNuTg8XdCHcGsIbdqQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "760307845653-941iud38ga1eregj9cjgdo6hvu2mahe6.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

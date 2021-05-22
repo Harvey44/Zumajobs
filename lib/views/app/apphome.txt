@@ -1,0 +1,636 @@
+import 'dart:convert';
+
+import 'package:adobe_xd/pinned.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_shimmer/flutter_shimmer.dart';
+import 'package:provider/provider.dart';
+import 'package:share/share.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:zumajobs/Api/api_service.dart';
+import 'package:zumajobs/models/home_resp.dart';
+import 'package:zumajobs/models/model_resp.dart';
+import 'package:zumajobs/models/vacancy_resp.dart';
+import 'package:zumajobs/views/app/aProfile.dart';
+import 'package:zumajobs/views/app/search.dart';
+import 'package:zumajobs/views/app/vacancy.dart';
+import 'package:zumajobs/views/intro.dart';
+
+class AppHome extends StatefulWidget {
+  @override
+  _AppHomeState createState() => _AppHomeState();
+}
+
+class _AppHomeState extends State<AppHome> {
+  String key;
+  Future<HomeResp> future;
+  TextEditingController scontroller = TextEditingController();
+  GlobalKey btnKey = GlobalKey();
+  var scaffoldkey = GlobalKey<ScaffoldState>();
+  void initState() {
+    // TODO: implement initState
+    getKey();
+    super.initState();
+  }
+
+  getKey() async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    setState(() {
+      key = preferences.getString("token");
+    });
+    Map resp = {"key": key};
+    var token = json.encode(resp);
+    future = Provider.of<ApiService>(context, listen: false).get_home(token);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+            statusBarColor: Colors.white,
+            systemNavigationBarColor: Colors.white,
+            statusBarBrightness: Brightness.light,
+            statusBarIconBrightness: Brightness.dark),
+        child: Scaffold(
+            key: scaffoldkey,
+            backgroundColor: Colors.white,
+            drawer: Drawer(
+                child: ListView(
+              padding: EdgeInsets.zero,
+              children: <Widget>[
+                DrawerHeader(
+                  child: Center(
+                      child: Text("ZumaJobs",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 22))),
+                  decoration: BoxDecoration(color: Colors.white),
+                ),
+                ListTile(
+                    title: Text("Privacy Policy"),
+                    onTap: () {
+                      // Navigator.of(context).push(
+                      //   MaterialPageRoute(
+                      //     builder: (context) => Privacy(),
+                      //   ),
+                      // );
+                    }),
+                ListTile(
+                    title: Text("Share the app"),
+                    onTap: () {
+                      Share.share("Check out this cool job search app");
+                    }),
+                ListTile(
+                    title: Text("Logout"),
+                    onTap: () {
+                      logout(context);
+                    }),
+              ],
+            )),
+            body: _buildHome(context)));
+  }
+
+  FutureBuilder _buildHome(BuildContext context) {
+    // FutureBuilder is perfect for easily building UI when awaiting a Future
+    // Response is the type currently returned by all the methods of PostApiService
+
+    Map resp = {"key": key};
+    var token = json.encode(resp);
+    var h = MediaQuery.of(context).size.height / 3;
+    return FutureBuilder<HomeResp>(
+        future: future,
+        builder: (BuildContext context, AsyncSnapshot<HomeResp> snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            if (snapshot.hasError) {
+              return Container(
+                child: Center(
+                  child: Text("Something wrong"),
+                ),
+              );
+            }
+            HomeResp home = snapshot.data;
+            return Top(context, home);
+          } else {
+            return Column(
+              children: [
+                ProfileShimmer(
+                  hasBottomLines: true,
+                ),
+                SizedBox(height: 10),
+                ProfileShimmer(
+                  hasBottomLines: true,
+                ),
+                SizedBox(height: 10),
+                ProfileShimmer(
+                  hasBottomLines: true,
+                ),
+              ],
+            );
+          }
+        });
+  }
+
+  Top(context, HomeResp home) {
+    if (home.applicant.picture == null) {
+      return AProfile();
+    } else {
+      return Page(context, home);
+    }
+  }
+
+  Page(context, HomeResp home) {
+    return Container(
+        margin: const EdgeInsets.fromLTRB(0, 40, 0, 20),
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.topLeft,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 0, 10),
+                child: InkWell(
+                    onTap: () {
+                      // menu.show(widgetKey: btnKey);
+                      scaffoldkey.currentState.openDrawer();
+                    },
+                    child: Icon(
+                      Icons.menu,
+                      color: Colors.black,
+                      size: 20,
+                      key: btnKey,
+                    )),
+              ),
+            ),
+            Center(
+              child: CircleAvatar(
+                radius: 40,
+                backgroundColor: Colors.grey[50],
+                backgroundImage: NetworkImage(home.applicant.picture),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Center(
+                child: Text(home.fullname,
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                        fontSize: 16)),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Center(
+                child: Text(home.applicant.skills,
+                    style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        color: Colors.grey,
+                        fontSize: 12)),
+              ),
+            ),
+            Center(
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                height: 40,
+                width: MediaQuery.of(context).size.width - 100,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20.0),
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x1a7364f8),
+                      offset: Offset(-2.723942995071411, 5.346039295196533),
+                      blurRadius: 18,
+                    ),
+                  ],
+                ),
+                child: TextFormField(
+                  keyboardType: TextInputType.text,
+                  controller: scontroller,
+                  textInputAction: TextInputAction.search,
+                  onFieldSubmitted: (value) {
+                    Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) => Search(query: value)));
+                  },
+                  style:
+                      TextStyle(fontSize: 14, decoration: TextDecoration.none),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.all(10.0),
+                    focusColor: Colors.black,
+                    hoverColor: Colors.black,
+                    hintStyle: TextStyle(color: Colors.grey, fontSize: 12),
+                    hintText: "Search for a position, e.g App Developer",
+                    suffixIcon:
+                        Icon(CupertinoIcons.search, color: Colors.green),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                physics: ClampingScrollPhysics(),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                  color: const Color(0x0d3049ba),
+                  child: Column(
+                    children: [
+                      View(context, home),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                        child: Align(
+                          alignment: Alignment.topLeft,
+                          child: Text("Recent Activities",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.normal,
+                                  color: Colors.green,
+                                  fontSize: 12)),
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.max,
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              width: 150,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20.0),
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0x1a7364f8),
+                                    offset: Offset(
+                                        -2.723942995071411, 5.346039295196533),
+                                    blurRadius: 18,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                // mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        10, 10, 0, 10),
+                                    child: Align(
+                                      alignment: Alignment.topLeft,
+                                      child: Image(
+                                          image: AssetImage(
+                                              "assets/images/saved.png")),
+                                    ),
+                                  ),
+                                  Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            0, 15, 10, 0),
+                                        child: Align(
+                                          alignment: Alignment.topLeft,
+                                          child: Text(
+                                            home.applicant.views.toString(),
+                                            style: TextStyle(
+                                                color: Colors.green,
+                                                fontSize: 16),
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            10, 5, 10, 5),
+                                        child: Text(
+                                          "Profile Views",
+                                          style: TextStyle(
+                                              color: Colors.grey, fontSize: 12),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              width: 150,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20.0),
+                                color: Colors.white,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0x1a7364f8),
+                                    offset: Offset(
+                                        -2.723942995071411, 5.346039295196533),
+                                    blurRadius: 18,
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                // mainAxisSize: MainAxisSize.max,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                        10, 15, 0, 10),
+                                    child: Align(
+                                      alignment: Alignment.topLeft,
+                                      child: Image(
+                                          image: AssetImage(
+                                              "assets/images/applied.png")),
+                                    ),
+                                  ),
+                                  Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            0, 15, 10, 0),
+                                        child: Align(
+                                          alignment: Alignment.topLeft,
+                                          child: Text(
+                                            home.applicant.applied.toString(),
+                                            style: TextStyle(
+                                                color: Colors.green,
+                                                fontSize: 16),
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.fromLTRB(
+                                            10, 5, 10, 5),
+                                        child: Text(
+                                          "Applied",
+                                          style: TextStyle(
+                                              color: Colors.grey, fontSize: 12),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20)
+                    ],
+                  ),
+                ),
+              ),
+            )
+          ],
+        ));
+  }
+
+  View(context, HomeResp home) {
+    if (home.vacancy.length == 0) {
+      return Center(child: Text("No Vacancy Recommendations Yet !!"));
+    } else {
+      return Container(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Text("Recommended Jobs",
+                    style: TextStyle(
+                        fontWeight: FontWeight.normal,
+                        color: Colors.green,
+                        fontSize: 12)),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+              child: Row(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 150,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10.0),
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0x1a7364f8),
+                          offset: Offset(-2.723942995071411, 5.346039295196533),
+                          blurRadius: 18,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      // mainAxisSize: MainAxisSize.max,
+                      // mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text(home.vacancy[0].position,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                    fontSize: 16)),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text(home.vacancy[0].company,
+                                style: TextStyle(
+                                    // fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    fontSize: 14)),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text("${home.vacancy[0].salary}",
+                                style: TextStyle(
+                                    // fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    fontSize: 14)),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Container(
+                            width: 70,
+                            height: 36,
+                            margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
+                            child: RaisedButton(
+                              child: Text(
+                                "Apply",
+                                style: TextStyle(
+                                    color: Colors.green, fontSize: 12),
+                              ),
+                              onPressed: () {
+                                postapply(context);
+                                _sendMail(home.vacancy[0].email);
+                              },
+                              color: Colors.grey[50],
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  side: BorderSide(
+                                    color: Colors.green,
+                                  )),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: 150,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10.0),
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0x1a7364f8),
+                          offset: Offset(-2.723942995071411, 5.346039295196533),
+                          blurRadius: 18,
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.max,
+                      // mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(10.0),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text(home.vacancy[1].position,
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                    fontSize: 16)),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text(home.vacancy[1].company,
+                                style: TextStyle(
+                                    // fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    fontSize: 14)),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(10, 0, 10, 20),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Text("${home.vacancy[1].salary}",
+                                style: TextStyle(
+                                    // fontWeight: FontWeight.bold,
+                                    color: Colors.grey,
+                                    fontSize: 14)),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.bottomRight,
+                          child: Container(
+                            width: 70,
+                            height: 36,
+                            margin: EdgeInsets.fromLTRB(10, 5, 10, 10),
+                            child: RaisedButton(
+                              child: Text(
+                                "Apply",
+                                style: TextStyle(
+                                    color: Colors.green, fontSize: 12),
+                              ),
+                              onPressed: () {
+                                postapply(context);
+                                _sendMail(home.vacancy[1].email);
+                              },
+                              color: Colors.grey[50],
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                  side: BorderSide(
+                                    color: Colors.green,
+                                  )),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
+              child: Align(
+                alignment: Alignment.bottomRight,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => Vacancy(),
+                      ),
+                    );
+                  },
+                  child: Text("See All",
+                      style: TextStyle(
+                          fontWeight: FontWeight.normal,
+                          color: Colors.green,
+                          fontSize: 12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        // margin: EdgeInsets.fromLTRB(15, 15, 15, 15),
+        // height: 200,..
+      );
+    }
+  }
+
+  _sendMail(email) async {
+    var uri = 'mailto:$email?subject=From ZumaJobs&body=Hi  ...';
+    if (await canLaunch(uri)) {
+      await launch(uri);
+    } else {
+      throw 'Failed';
+    }
+  }
+
+  postapply(context) async {
+    Map resp = {"key": key};
+    var token = json.encode(resp);
+
+    try {
+      final ModelResp response =
+          await Provider.of<ApiService>(context, listen: false)
+              .post_apply(token);
+      if (response.message == "Success") {
+        SharedPreferences preferences = await SharedPreferences.getInstance();
+        int v = preferences.getInt("apply");
+        preferences.setInt("apply", v + 1);
+      } else {}
+    } on DioError catch (e) {
+      if (e.response != null) {
+      } else {
+        print(e.message);
+      }
+    }
+  }
+
+  logout(context) async {
+    SharedPreferences preferences = await SharedPreferences.getInstance();
+    preferences.clear();
+    Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (BuildContext context) => Intro()),
+        (Route<dynamic> route) => false);
+  }
+}
